@@ -1,6 +1,7 @@
 package zipack
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -128,4 +129,19 @@ func BenchmarkGetReaderWithDeleteCache(b *testing.B) {
 		mgr.cache.Delete(fileKey)
 		b.StartTimer()
 	}
+}
+
+func ExampleManager_GetFileContents() {
+	mgr := NewManager("./testdata/sqlfiles.zip")
+	fileKey := filepath.Join("default", "selectDual.sql")
+	res, err := mgr.GetFileContents(fileKey)
+	if err != nil {
+		panic(fmt.Errorf("Unexpected error: %v", err))
+	}
+	fmt.Printf("%s", res)
+	// Output:
+	// select
+	//   *
+	// from
+	//   DUAL
 }
