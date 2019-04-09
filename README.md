@@ -8,12 +8,12 @@ will not be deleting keys. This means that it should be safe for concurrent use.
 Example usage
 
 ```go
-mgr := NewManager("[./testdata/sqlfiles.zip&#34;](./testdata/sqlfiles.zip"))
+mgr := NewManager("./testdata/sqlfiles.zip")
 
 // Call Function
 res, err := mgr.GetFileContents(filepath.Join("default", "selectDual.sql"))
 if err != nil {
-  t.Errorf("Unexpected error: %!(NOVERB)v", err)
+  t.Errorf("Unexpected error: %v", err)
 }```
 
 
