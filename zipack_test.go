@@ -5,13 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 )
 
 func TestGetReader(t *testing.T) {
 	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
+	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 
 	// Call Function
 	r, err := mgr.GetReader(filepath.Join("default", "selectDual.sql"))
@@ -48,7 +47,7 @@ func TestGetReader(t *testing.T) {
 		}
 	}
 
-	t.Run("File does not extist", func(t2 *testing.T) {
+	t.Run("File does not exist", func(t2 *testing.T) {
 		r2, err2 := mgr.GetReader(filepath.Join("default", "DOESNOTEXIST.txt"))
 		if err2 == nil {
 			t2.Errorf("Exepcted error but call succeeded: %v", r2)
@@ -66,7 +65,7 @@ func TestGetReader(t *testing.T) {
 	})
 
 	t.Run("Nonzip file", func(t2 *testing.T) {
-		m := NewManager("./testdata/sqlfiles/default/selectDual.sql")
+		m := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 		_, err := m.GetReader("doesn't matter")
 		if err == nil {
 			t2.Errorf("Get worked without error")
@@ -76,7 +75,7 @@ func TestGetReader(t *testing.T) {
 
 func TestGetFileContents(t *testing.T) {
 	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
+	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 
 	// Call Function
 	res, err := mgr.GetFileContents(filepath.Join("default", "selectDual.sql"))
@@ -125,117 +124,56 @@ func TestGetFileContents(t *testing.T) {
 			t2.Errorf("Unexepcted error: %v", err3)
 		}
 	})
-
 }
 
-func BenchmarkGetReaderWCache(b *testing.B) {
-	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
-	fileKey := filepath.Join("default", "selectDual.sql")
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		// Call Function
-		_, err := mgr.GetReader(fileKey)
-		if err != nil {
-			b.Errorf("Unexpected error: %v", err)
+func TestPreloadPaths(t *testing.T) {
+	mgr := NewManager(Options{
+		ZipFileName: "./testdata/sqlfiles.zip",
+		PreloadPaths: []string{
+			filepath.Join("simple", "aa.txt"),
+			filepath.Join("simple", "bb.txt"),
+			filepath.Join("simple", "cc.txt"),
+		},
+	})
+
+	tests := []struct {
+		Path    string
+		Present bool
+	}{
+		{Path: filepath.Join("simple", "aa.txt"), Present: true},
+		{Path: filepath.Join("simple", "bb.txt"), Present: true},
+		{Path: filepath.Join("simple", "cc.txt"), Present: true},
+		{Path: filepath.Join("simple", "dd.txt"), Present: false},
+		{Path: filepath.Join("simple", "ee.txt"), Present: false},
+		{Path: filepath.Join("simple", "ff.txt"), Present: false},
+	}
+	for _, test := range tests {
+		_, ok := mgr.cache.Load(test.Path)
+		if ok != test.Present {
+			t.Errorf("Path %s preload: Act(%v) Exp(%v)", test.Path, ok, test.Present)
 		}
 	}
 }
 
-func BenchmarkGetFileContentsWCache(b *testing.B) {
-	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
-	fileKey := filepath.Join("default", "selectDual.sql")
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		// Call Function
-		_, err := mgr.GetFileContents(fileKey)
+func TestReadAndStoreFromZip(t *testing.T) {
+	t.Run("zip file exists", func(t *testing.T) {
+		mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
+		_, err := mgr.readAndStoreFromZip("largerFile.txt")
 		if err != nil {
-			b.Errorf("Unexpected error: %v", err)
+			t.Errorf("Did not expect error: %v", err)
 		}
-	}
-}
-func BenchmarkOsOpenFileReadAllNonZipWSimilarCache(b *testing.B) {
-	fileKey := "./testdata/sqlfiles/default/selectDual.sql"
-	for n := 0; n < b.N; n++ {
-		_, err := getFileContentsNonZipWSimilarCache(fileKey)
-		if err != nil {
-			b.Fatal(err)
+	})
+	t.Run("zip file not exists", func(t *testing.T) {
+		mgr := NewManager(Options{ZipFileName: "./testdata/fail.zip"})
+		_, err := mgr.readAndStoreFromZip("largerFile.txt")
+		if err == nil {
+			t.Error("Expected error")
 		}
-	}
-}
-
-func BenchmarkGetReaderWithDeleteCache(b *testing.B) {
-	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
-	fileKey := filepath.Join("default", "selectDual.sql")
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		// Call Function
-		_, err := mgr.GetReader(fileKey)
-		if err != nil {
-			b.Errorf("Unexpected error: %v", err)
-		}
-		b.StopTimer()
-		mgr.cache.Delete(fileKey)
-		b.StartTimer()
-	}
-}
-
-func BenchmarkGetFileContentsWithDeleteCache(b *testing.B) {
-	// SETUP
-	mgr := NewManager("./testdata/sqlfiles.zip")
-	fileKey := filepath.Join("default", "selectDual.sql")
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		// Call Function
-		_, err := mgr.GetFileContents(fileKey)
-		if err != nil {
-			b.Errorf("Unexpected error: %v", err)
-		}
-		b.StopTimer()
-		mgr.cache.Delete(fileKey)
-		b.StartTimer()
-	}
-}
-func BenchmarkOsOpenFileReadAllNonZipNoCache(b *testing.B) {
-	fileKey := "./testdata/sqlfiles/default/selectDual.sql"
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		file, err := os.OpenFile(fileKey, os.O_RDONLY, 0666)
-		if err != nil {
-			b.Fatal(err)
-		}
-		_, err = ioutil.ReadAll(file)
-		if err != nil {
-			b.Fatal(err)
-		}
-		file.Close()
-	}
-}
-
-var cache sync.Map
-
-func getFileContentsNonZipWSimilarCache(path string) ([]byte, error) {
-	v, ok := cache.Load(path)
-	if ok {
-		return v.([]byte), nil
-	}
-	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	buf, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-	cache.Store(path, buf)
-	return buf, nil
+	})
 }
 
 func ExampleManager_GetFileContents() {
-	mgr := NewManager("./testdata/sqlfiles.zip")
+	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 	fileKey := filepath.Join("default", "selectDual.sql")
 	res, err := mgr.GetFileContents(fileKey)
 	if err != nil {

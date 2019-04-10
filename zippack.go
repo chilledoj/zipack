@@ -3,7 +3,6 @@ package zipack
 import (
 	"archive/zip"
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,15 +11,25 @@ import (
 
 // Manager is the container for the zipack logic
 type Manager struct {
-	cache        sync.Map
-	zipFileName  string
-	PreloadPaths []string // TODO
+	cache       sync.Map
+	zipFileName string
+}
+
+// Options define the configuration for the manager object
+type Options struct {
+	ZipFileName  string
+	PreloadPaths []string
 }
 
 // NewManager does exactly as it says on the tin.
-func NewManager(zipFileName string) *Manager {
+func NewManager(opts Options) *Manager {
 	mgr := &Manager{
-		zipFileName: zipFileName,
+		zipFileName: opts.ZipFileName,
+	}
+	if len(opts.PreloadPaths) > 1 {
+		if err := mgr.preload(opts.PreloadPaths); err != nil {
+			panic(err)
+		}
 	}
 	return mgr
 }
@@ -32,11 +41,7 @@ func (mgr *Manager) GetFileContents(path string) ([]byte, error) {
 		return nil, err
 	}
 	// use cache now
-	v, ok := mgr.cache.Load(path)
-	if !ok {
-		// Should never happen
-		return nil, fmt.Errorf("cache not populated after getReader")
-	}
+	v, _ := mgr.cache.Load(path)
 
 	return v.([]byte), nil
 }
@@ -49,6 +54,10 @@ func (mgr *Manager) GetReader(path string) (io.Reader, error) {
 		return reader, nil
 	}
 	// Cache Miss - read from zip
+	return mgr.readAndStoreFromZip(path)
+}
+
+func (mgr *Manager) readAndStoreFromZip(path string) (io.Reader, error) {
 	r, err := zip.OpenReader(mgr.zipFileName)
 	if err != nil {
 		return nil, err
@@ -93,4 +102,14 @@ func (mgr *Manager) GetReader(path string) (io.Reader, error) {
 		return &buf, nil
 	}
 	return nil, os.ErrNotExist
+}
+
+func (mgr *Manager) preload(paths []string) error {
+	for _, path := range paths {
+		_, err := mgr.readAndStoreFromZip(path)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
