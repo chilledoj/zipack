@@ -3,9 +3,8 @@ package zipack
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,7 +14,7 @@ import (
 type Manager struct {
 	cache        sync.Map
 	zipFileName  string
-	PreloadPaths []string
+	PreloadPaths []string // TODO
 }
 
 // NewManager does exactly as it says on the tin.
@@ -28,14 +27,18 @@ func NewManager(zipFileName string) *Manager {
 
 // GetFileContents will return the contents of the file, using the cache first
 func (mgr *Manager) GetFileContents(path string) ([]byte, error) {
-	file, err := mgr.GetReader(path)
+	_, err := mgr.GetReader(path)
 	if err != nil {
 		return nil, err
 	}
-	if f, ok := file.(io.ReadCloser); ok {
-		defer f.Close()
+	// use cache now
+	v, ok := mgr.cache.Load(path)
+	if !ok {
+		// Should never happen
+		return nil, fmt.Errorf("cache not populated after getReader")
 	}
-	return ioutil.ReadAll(file)
+
+	return v.([]byte), nil
 }
 
 // GetReader will return an io.Reader for the file, using the cache value first
@@ -54,6 +57,20 @@ func (mgr *Manager) GetReader(path string) (io.Reader, error) {
 
 	var buf bytes.Buffer
 
+	// This is just to make sure we get the correct path.
+	// Using the following structure
+	//  + sqlfiles
+	//    + default
+	//      selectDual.sql
+	//
+	// zipping the sqlfiles folder means that the folder becomes part
+	// of the path within the zip file.
+	//
+	// Thus we need to get the zipfile name and use as a folder name.
+	//
+	// e.g.
+	//  default/selectDual.sql in sqlfiles.zip   =   sqlfiles/default/selectDual.sql
+	//
 	zipfile := filepath.Base(mgr.zipFileName)
 	zipext := filepath.Ext(mgr.zipFileName)
 	basePath := zipfile[0 : len(zipfile)-len(zipext)]
@@ -65,11 +82,11 @@ func (mgr *Manager) GetReader(path string) (io.Reader, error) {
 		}
 		rc, err := f.Open()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		_, err = io.Copy(&buf, rc)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		rc.Close()
 		mgr.cache.Store(path, buf.Bytes())

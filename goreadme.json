@@ -1,4 +1,14 @@
 {
   "functions": true,
-  "skip_examples": false
+  "skip_examples": false,
+  "skip_sub_packages": true,
+  "recursive_sub_packages": false,
+  "badges": {
+    "goreadme": true,
+    "travis_ci": false,
+    "code_cov": false,
+    "golang_ci": false,
+    "go_doc": true,
+    "go_report_card": true
+  }
 }
