@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
@@ -66,27 +65,8 @@ func (mgr *Manager) readAndStoreFromZip(path string) (io.Reader, error) {
 
 	var buf bytes.Buffer
 
-	// This is just to make sure we get the correct path.
-	// Using the following structure
-	//  + sqlfiles
-	//    + default
-	//      selectDual.sql
-	//
-	// zipping the sqlfiles folder means that the folder becomes part
-	// of the path within the zip file.
-	//
-	// Thus we need to get the zipfile name and use as a folder name.
-	//
-	// e.g.
-	//  default/selectDual.sql in sqlfiles.zip   =   sqlfiles/default/selectDual.sql
-	//
-	zipfile := filepath.Base(mgr.zipFileName)
-	zipext := filepath.Ext(mgr.zipFileName)
-	basePath := zipfile[0 : len(zipfile)-len(zipext)]
-	filename := filepath.Join(basePath, path)
-
 	for _, f := range r.File {
-		if f.Name != filename {
+		if f.Name != path {
 			continue
 		}
 		rc, err := f.Open()
