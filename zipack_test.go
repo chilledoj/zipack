@@ -14,7 +14,7 @@ func TestGetReader(t *testing.T) {
 	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 
 	// Call Function
-	r, err := mgr.GetReader(filepath.Join("sqlfiles","default", "selectDual.sql"))
+	r, err := mgr.GetReader(filepath.Join("sqlfiles", "default", "selectDual.sql"))
 	if err != nil {
 		t.Errorf("Got unexepcted error: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestGetReader(t *testing.T) {
 	}
 
 	t.Run("File does not exist", func(t2 *testing.T) {
-		r2, err2 := mgr.GetReader(filepath.Join("sqlfiles","default", "DOESNOTEXIST.txt"))
+		r2, err2 := mgr.GetReader(filepath.Join("sqlfiles", "default", "DOESNOTEXIST.txt"))
 		if err2 == nil {
 			t2.Errorf("Exepcted error but call succeeded: %v", r2)
 		}
@@ -59,15 +59,23 @@ func TestGetReader(t *testing.T) {
 	})
 
 	t.Run("Use cache", func(t2 *testing.T) {
-		_, err3 := mgr.GetReader(filepath.Join("sqlfiles","default", "selectDual.sql"))
+		_, err3 := mgr.GetReader(filepath.Join("sqlfiles", "default", "selectDual.sql"))
 		if err3 != nil {
 			t2.Errorf("Unexepcted error: %v", err3)
 		}
 	})
 
-	t.Run("Nonzip file", func(t2 *testing.T) {
+	t.Run("Nonzip zipfile", func(t2 *testing.T) {
 		m := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 		_, err := m.GetReader("doesn't matter")
+		if err == nil {
+			t2.Errorf("Get worked without error")
+		}
+	})
+
+	t.Run("Directory", func(t2 *testing.T) {
+		m := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
+		_, err := m.GetReader("/sqlfiles/")
 		if err == nil {
 			t2.Errorf("Get worked without error")
 		}
@@ -79,7 +87,7 @@ func TestGetFileContents(t *testing.T) {
 	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 
 	// Call Function
-	res, err := mgr.GetFileContents(filepath.Join("sqlfiles","default", "selectDual.sql"))
+	res, err := mgr.GetFileContents(filepath.Join("sqlfiles", "default", "selectDual.sql"))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -110,7 +118,7 @@ func TestGetFileContents(t *testing.T) {
 	}
 
 	t.Run("File does not exist", func(t2 *testing.T) {
-		r2, err2 := mgr.GetFileContents(filepath.Join("sqlfiles","default", "DOESNOTEXIST.txt"))
+		r2, err2 := mgr.GetFileContents(filepath.Join("sqlfiles", "default", "DOESNOTEXIST.txt"))
 		if err2 == nil {
 			t2.Errorf("Exepcted error but call succeeded: %v", r2)
 		}
@@ -120,7 +128,7 @@ func TestGetFileContents(t *testing.T) {
 	})
 
 	t.Run("Use cache", func(t2 *testing.T) {
-		_, err3 := mgr.GetFileContents(filepath.Join("sqlfiles","default", "selectDual.sql"))
+		_, err3 := mgr.GetFileContents(filepath.Join("sqlfiles", "default", "selectDual.sql"))
 		if err3 != nil {
 			t2.Errorf("Unexepcted error: %v", err3)
 		}
@@ -131,9 +139,9 @@ func TestPreloadPaths(t *testing.T) {
 	mgr := NewManager(Options{
 		ZipFileName: "./testdata/sqlfiles.zip",
 		PreloadPaths: []string{
-			filepath.Join("sqlfiles","simple", "aa.txt"),
-			filepath.Join("sqlfiles","simple", "bb.txt"),
-			filepath.Join("sqlfiles","simple", "cc.txt"),
+			filepath.Join("sqlfiles", "simple", "aa.txt"),
+			filepath.Join("sqlfiles", "simple", "bb.txt"),
+			filepath.Join("sqlfiles", "simple", "cc.txt"),
 		},
 	})
 
@@ -141,12 +149,12 @@ func TestPreloadPaths(t *testing.T) {
 		Path    string
 		Present bool
 	}{
-		{Path: filepath.Join("sqlfiles","simple", "aa.txt"), Present: true},
-		{Path: filepath.Join("sqlfiles","simple", "bb.txt"), Present: true},
-		{Path: filepath.Join("sqlfiles","simple", "cc.txt"), Present: true},
-		{Path: filepath.Join("sqlfiles","simple", "dd.txt"), Present: false},
-		{Path: filepath.Join("sqlfiles","simple", "ee.txt"), Present: false},
-		{Path: filepath.Join("sqlfiles","simple", "ff.txt"), Present: false},
+		{Path: filepath.Join("sqlfiles", "simple", "aa.txt"), Present: true},
+		{Path: filepath.Join("sqlfiles", "simple", "bb.txt"), Present: true},
+		{Path: filepath.Join("sqlfiles", "simple", "cc.txt"), Present: true},
+		{Path: filepath.Join("sqlfiles", "simple", "dd.txt"), Present: false},
+		{Path: filepath.Join("sqlfiles", "simple", "ee.txt"), Present: false},
+		{Path: filepath.Join("sqlfiles", "simple", "ff.txt"), Present: false},
 	}
 	for _, test := range tests {
 		_, ok := mgr.cache.Load(test.Path)
@@ -157,16 +165,16 @@ func TestPreloadPaths(t *testing.T) {
 }
 
 func TestReadAndStoreFromZip(t *testing.T) {
-	t.Run("zip file exists", func(t *testing.T) {
+	t.Run("zipfile exists", func(t *testing.T) {
 		mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
-		_, err := mgr.readAndStoreFromZip(filepath.Join("sqlfiles","largerFile.txt"))
+		_, err := mgr.readAndStoreFromZip(filepath.Join("sqlfiles", "largerFile.txt"))
 		if err != nil {
 			t.Errorf("Did not expect error: %v", err)
 		}
 	})
-	t.Run("zip file not exists", func(t *testing.T) {
+	t.Run("zipfile not exists", func(t *testing.T) {
 		mgr := NewManager(Options{ZipFileName: "./testdata/fail.zip"})
-		_, err := mgr.readAndStoreFromZip(filepath.Join("sqlfiles","largerFile.txt"))
+		_, err := mgr.readAndStoreFromZip(filepath.Join("sqlfiles", "largerFile.txt"))
 		if err == nil {
 			t.Error("Expected error")
 		}
@@ -174,19 +182,19 @@ func TestReadAndStoreFromZip(t *testing.T) {
 }
 
 /*
- * JAR file in testdata folder has been created by
+ * JAR zipfile in testdata folder has been created by
  *   1. CD into testdata folder
  *   2. Run `jar cf sqlfiles.jar -C sqlfiles .`
  *
- * This is a bit different to the way the zip file was created which includes the sqlfiles folder
+ * This is a bit different to the way the zip zipfile was created which includes the sqlfiles folder
  */
 
-func TestReadJarFile(t *testing.T){
-	// SETUP - with a JAR file instead.
+func TestReadJarFile(t *testing.T) {
+	// SETUP - with a JAR zipfile instead.
 	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.jar"})
 
-	zipPath:= filepath.Join("default", "selectDual.sql")
-	fixturePath := filepath.Join("testdata", "sqlfiles",zipPath)
+	zipPath := filepath.Join("default", "selectDual.sql")
+	fixturePath := filepath.Join("testdata", "sqlfiles", zipPath)
 
 	// Get File contents
 	res, err := mgr.GetFileContents(zipPath)
@@ -199,14 +207,14 @@ func TestReadJarFile(t *testing.T){
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(res,filedata) {
-		t.Errorf("data note the same: %d",bytes.Compare(res,filedata))
+	if !bytes.Equal(res, filedata) {
+		t.Errorf("data note the same: %d", bytes.Compare(res, filedata))
 	}
 }
 
 func ExampleManager_GetFileContents() {
 	mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
-	fileKey := filepath.Join("sqlfiles","default", "selectDual.sql")
+	fileKey := filepath.Join("sqlfiles", "default", "selectDual.sql")
 	res, err := mgr.GetFileContents(fileKey)
 	if err != nil {
 		panic(fmt.Errorf("Unexpected error: %v", err))

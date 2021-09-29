@@ -15,10 +15,14 @@ This also means that it should be safe for concurrent use.
 
 Care should be taken when creating a zip file. For instance, the `sqlfiles.zip` file in the `testdata` folder was 
 created on a Mac by selecting the folder in the finder, and then selecting the compress option on the context menu. 
-This creates the zip file with the folder included in the file structure. Therefore all of your paths must
+This creates the zip file with the folder included in the file structure. Therefore, all of your paths must
 include this folder. See below and the tests for examples.
 
-## Example
+**UPDATE:** It is now possible to use the manager directly as a `fs.FS` (filesystem) and hence can be used as a
+file server within an http server.
+
+## Examples
+Normal usage:
 ```go
 mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
 fileKey := filepath.Join("sqlfiles","default", "selectDual.sql")
@@ -32,4 +36,12 @@ fmt.Printf("%s", res)
 //   *
 // from
 //   DUAL
+```
+
+HTTP usage:
+
+```go
+mgr := NewManager(Options{ZipFileName: "./testdata/sqlfiles.zip"})
+mux := http.NewServeMux()
+mux.Handle("/", http.FileServer(http.FS(mgr)))
 ```

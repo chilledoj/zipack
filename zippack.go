@@ -3,7 +3,9 @@ package zipack
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"sync"
 )
@@ -13,6 +15,9 @@ type Manager struct {
 	cache       sync.Map
 	zipFileName string
 }
+
+// interface check
+var _ fs.FS = new(Manager)
 
 // Options define the configuration for the manager object
 type Options struct {
@@ -33,53 +38,83 @@ func NewManager(opts Options) *Manager {
 	return mgr
 }
 
-// GetFileContents will return the contents of the file, using the cache first
+// GetFileContents will return the contents of the zipfile, using the cache first
 func (mgr *Manager) GetFileContents(path string) ([]byte, error) {
-	_, err := mgr.GetReader(path)
-	if err != nil {
-		return nil, err
+	cacheFile, ok := mgr.cache.Load(path)
+	if !ok {
+		var err error
+		cacheFile, err = mgr.readAndStoreFromZip(path)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// use cache now
-	v, _ := mgr.cache.Load(path)
 
-	return v.([]byte), nil
+	file := cacheFile.(*zipfile)
+	return file.data, nil
 }
 
-// GetReader will return an io.Reader for the file, using the cache value first
+// GetReader will return an io.Reader for the zipfile, using the cache value first
 func (mgr *Manager) GetReader(path string) (io.Reader, error) {
 	val, ok := mgr.cache.Load(path)
 	if ok {
-		reader := bytes.NewBuffer(val.([]byte))
-		return reader, nil
+		f, ok := val.(*zipfile)
+		if !ok {
+			return nil, fmt.Errorf("something went wrong")
+		}
+		return bytes.NewBuffer(f.data), nil
 	}
 	// Cache Miss - read from zip
-	return mgr.readAndStoreFromZip(path)
+	zf, err := mgr.readAndStoreFromZip(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewBuffer(zf.data), nil
 }
 
-func (mgr *Manager) readAndStoreFromZip(path string) (io.Reader, error) {
+func (mgr *Manager) readAndStoreFromZip(path string) (*zipfile, error) {
 	r, err := zip.OpenReader(mgr.zipFileName)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var buf bytes.Buffer
-
 	for _, f := range r.File {
 		if f.Name != path {
 			continue
 		}
+
+		// let's not return anything and error for a directory
+		fileInfo := f.FileHeader.FileInfo()
+		if fileInfo.IsDir() {
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: path,
+				Err:  fmt.Errorf("filepath is directory"),
+			}
+		}
+
+		zipFile := &zipfile{
+			name: path,
+			info: fileInfo,
+		}
+
 		rc, err := f.Open()
 		if err != nil {
 			return nil, err
 		}
+
+		var buf bytes.Buffer
+
 		_, err = io.Copy(&buf, rc)
 		if err != nil {
 			return nil, err
 		}
 		rc.Close()
-		mgr.cache.Store(path, buf.Bytes())
-		return &buf, nil
+
+		zipFile.data = buf.Bytes()
+		mgr.cache.Store(path, zipFile)
+		return zipFile, nil
 	}
 	return nil, os.ErrNotExist
 }

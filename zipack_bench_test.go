@@ -22,8 +22,8 @@ func BenchmarkGetReaderWCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test(filepath.Join("sqlfiles","default", "selectDual.sql")))
-	b.Run("larger file", test(filepath.Join("sqlfiles","largerFile.txt")))
+	b.Run("small zipfile", test(filepath.Join("sqlfiles", "default", "selectDual.sql")))
+	b.Run("larger zipfile", test(filepath.Join("sqlfiles", "largerFile.txt")))
 }
 
 func BenchmarkGetFileContentsWCache(b *testing.B) {
@@ -40,8 +40,8 @@ func BenchmarkGetFileContentsWCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test(filepath.Join("sqlfiles","default", "selectDual.sql")))
-	b.Run("larger file", test(filepath.Join("sqlfiles","largerFile.txt")))
+	b.Run("small zipfile", test(filepath.Join("sqlfiles", "default", "selectDual.sql")))
+	b.Run("larger zipfile", test(filepath.Join("sqlfiles", "largerFile.txt")))
 }
 func BenchmarkOsOpenFileReadAllNonZipWSimilarCache(b *testing.B) {
 	test := func(fileKey string) func(*testing.B) {
@@ -54,8 +54,8 @@ func BenchmarkOsOpenFileReadAllNonZipWSimilarCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test("./testdata/sqlfiles/default/selectDual.sql"))
-	b.Run("larger file", test("./testdata/sqlfiles/largerFile.txt"))
+	b.Run("small zipfile", test("./testdata/sqlfiles/default/selectDual.sql"))
+	b.Run("larger zipfile", test("./testdata/sqlfiles/largerFile.txt"))
 }
 
 func BenchmarkGetReaderWithDeleteCache(b *testing.B) {
@@ -76,8 +76,8 @@ func BenchmarkGetReaderWithDeleteCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test(filepath.Join("sqlfiles","default", "selectDual.sql")))
-	b.Run("larger file", test(filepath.Join("sqlfiles","largerFile.txt")))
+	b.Run("small zipfile", test(filepath.Join("sqlfiles", "default", "selectDual.sql")))
+	b.Run("larger zipfile", test(filepath.Join("sqlfiles", "largerFile.txt")))
 }
 
 func BenchmarkGetFileContentsWithDeleteCache(b *testing.B) {
@@ -97,8 +97,8 @@ func BenchmarkGetFileContentsWithDeleteCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test(filepath.Join("sqlfiles","default", "selectDual.sql")))
-	b.Run("larger file", test(filepath.Join("sqlfiles","largerFile.txt")))
+	b.Run("small zipfile", test(filepath.Join("sqlfiles", "default", "selectDual.sql")))
+	b.Run("larger zipfile", test(filepath.Join("sqlfiles", "largerFile.txt")))
 
 }
 func BenchmarkOsOpenFileReadAllNonZipNoCache(b *testing.B) {
@@ -117,8 +117,8 @@ func BenchmarkOsOpenFileReadAllNonZipNoCache(b *testing.B) {
 			}
 		}
 	}
-	b.Run("small file", test("./testdata/sqlfiles/default/selectDual.sql"))
-	b.Run("larger file", test("./testdata/sqlfiles/largerFile.txt"))
+	b.Run("small zipfile", test("./testdata/sqlfiles/default/selectDual.sql"))
+	b.Run("larger zipfile", test("./testdata/sqlfiles/largerFile.txt"))
 }
 
 var cache sync.Map
